@@ -63,3 +63,140 @@ const Demo = () => {
   );
 };
 ```
+
+## It's all in context
+
+I'm not a fan of State managers. One of the reasons - you might not actually need them. We have Redux, Redux-Saga, Thunk, etc. All for making things that are already in the React + JS. And state managers use React.context under the hood. So maybe, you only need that?
+General idea and example from real project
+
+```jsx
+const App = () => {
+  return (
+    <ThemeProvider>
+      <LanguageContext>
+        <AppContext>
+          <AuthProviderContext>
+            <UserContext>
+              <CurrenciesContext>
+                <BrowserRouter>
+                  <Routes />
+                </BrowserRouter>
+              </CurrenciesContext>
+            </UserContext>
+          </AuthProviderContext>
+        </AppContext>
+      </LanguageContext>
+    </ThemeProvider>
+  );
+};
+```
+
+Here we have different providers and we clearly see what's going on. What our App is using, order of Init and hierarchy of our App
+You can read about providers anywhere, I want to share some tricks
+
+### Default value
+
+Yes, this "useless" thing for React.createContext
+
+```tsx
+const AppContext = React.createContext<AppContextType>({
+  loginPopupMode: 'login',
+  loginPopupVisible: false,
+
+  onSetToLoginMode: () => void 0,
+  onSetToRegisterMode: () => void 0,
+
+  onHideLoginPopup: () => void 0,
+  onShowLoginPopup: () => void 0,
+});
+```
+
+Why bother? Well, reality is that you can add anything here that will be a default implementation for your functionality. Most likely stateless, but it can use something that just provides functions. And doesn't bother with State
+Also, you can have something here that will allow you to indicate non-context behavior. So you can just have a Symbol here
+It's an edge-case, but keep that in mind
+
+### Optional Source
+
+i18n uses this for their translations
+https://github.com/i18next/react-i18next/blob/master/src/useTranslation.js
+As you see, it uses context, but you can just never wrap your App in the provider, it will just default to some other implementation
+That's one of the cases I described in prev. step
+
+But, there is more to it
+You can have a way to get information from multiple sources
+
+```jsx
+const useMeta = () => {
+  const meta = useContext(MetaContext) ?? useSelector(state => state.app.meta) ?? {}
+  // ... do something
+}
+```
+
+In this case, you can have a way to override something with Context Wrapper and default to some global state if needed
+This way you can have components/hooks with logic around something, but the source will be optional and contained in one place - this hook
+
+OF course, if you don't use State Manager, you can still just Wrap your Component with Provider of certain type and have same result
+My take here is that it's possible in more exotic cases - like this, when you already have some Redux in your App
+
+### Test Proviers
+
+You can just mock things in your tests by having two or more Providers exported with the same type
+And just switch them based on the process.ENV variable
+This is generally not recommended, but it's still possible thing to do
+
+```jsx
+const UserContext = React.createContext();
+
+const RealUserProvider = ({ children }) => <UserContext.Provider>{children}</UserContext.Provider> // Fetch data, do some processing, I don't care
+const FakeUserProvider = ({ children }) => <UserContext.Provider>{children}</UserContext.Provider> // Provide some fake data that you want to override manually. Use your imagination
+
+const UserProvider = process.ENV === "TEST" ? FakeUserProvider : RealUserProvider
+export default UserProvider;
+```
+
+### Context Expanding
+
+This was a real-life example for micro-service approach where each page was in different bundle. So app had some general localizations, but each service might override it for itself and itself only. Or provide some additional keys
+Each service was loading it's metadata, but how this expansion might look:
+
+```jsx
+const LocaleContext = React.createContext(...);
+const ServiceLocaleContext = React.createContext(...);
+```
+
+Each service would be rendered by a component
+
+```jsx
+const ServiceRenderer = ({Component, locale}) => {
+  return <ServiceLocaleContext.Provider value={locale}>
+    <Component />
+  </ServiceLocaleContext.Provider>
+}
+```
+
+And our localization was something like this
+
+```jsx
+const useTranslation = () => {
+  const locale = useContext(LocaleContext);
+  const serviceLocale = useContext(ServiceLocaleContext) ?? {};
+
+  const t = (key) => {
+    return serviceLocale[key] ?? locale[key] ?? key
+  }
+
+  return { t };
+}
+```
+
+And that's it. Expandable real-time localization was achieved just like this
+
+### Optimizations
+
+This will be not an easy topic. Usually people want some things that they don't understand
+Conxtext is like a rind of Power: it binds all to it's will. So when it's will changes - everyone MUST react
+So any change in the STATE in the Context must be translated.
+So this is exactly what happens
+This is why we have so many context's in the first place - we sign-up to some specific information, rather than sign up to ALL and then try to opt. it
+
+But what we need to do sometimes - is to CHANGE context value outside of the component
