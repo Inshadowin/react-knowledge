@@ -266,7 +266,7 @@ Another way is - split values and api in two contexts
 export const AppAuthStateContext = React.createContext({});
 export const AppAuthApiContext = React.createContext({});
 
-const AppAuthProvider: React.FC<AppAuthProviderProps> = ({ children }) => {
+const AppAuthProvider = ({ children }) => {
   const [value, setValue] = useState({ authState: "logged_in" });
 
   const logout = useCallaback(() => {
@@ -294,3 +294,133 @@ This is generally better if you care about performance of your Logout button
 
 You can have Two or more different context Providers for the same Context.
 I used this to have a way to configure Read-only mode for some of the Components.
+
+Base idea, no real implementation:
+
+```jsx
+export const GeometryContext = React.createContext({});
+
+const EditGeometryContextProvider = ({ children }) => {
+  const [value, setValue] = useState({});
+
+  return (
+    <GeometryContext.Provider value={{ value, setValue }}>
+      {children}
+    </GeometryContext.Provider>
+  );
+};
+
+const ViewGeometryContextProvider = ({ children }) => {
+  const [value, setValue] = useState({});
+
+  return (
+    <GeometryContext.Provider value={{ value }}>
+      {children}
+    </GeometryContext.Provider>
+  );
+};
+```
+
+So in your child components you will check if `setValue` is provided. And if not - that means you have `view-only` mode. Pretty useful.
+All your base-components will be re-used and you just need to wrap them in correct provider
+
+## Common problems
+
+React isn't perfect by any means. But it provides some cool features that other Frameworks don't. So let's see main issues and how to fix them
+
+### Why it re-mounts
+
+Re-mount, or mount in general happens when:
+
+- Element appears first time
+- Element's key changes
+- Element's position is changed
+- Element's type is changed
+
+Maybe there are more ways to say it, but these cover all cases. So let's dive into each of them
+
+- Element appears first time
+
+Pretty easy. First time component is rendered everything works in unique way: useState initializes value, etc.
+It happens without our way to change it. So nothing more to add
+
+- Element's key changes
+
+```jsx
+const Component = ({ userId }) => {
+  const { user, loading } = useFetch(() => getUser(userId), [userId]);
+
+  return <UserForm key={user.id} user={user} />;
+};
+```
+
+If you don't have that `key` part - you will have some problems. If your `Component` will have `userId` changed - data will be fetched. But form will not be re-initialized. So it may not update at all, or update partially. That's not good at all
+
+On the other hand - change `key` on your own if you need to re-mount component/element
+
+- Element's position is changed
+
+```jsx
+const Component = ({ hasError, error }) => {
+  if (hasError) {
+    return (
+      <div>
+        <span>{error}</span>
+        <input />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <input />
+    </div>
+  );
+};
+```
+
+In this case, if `hasError` changes `<input />` will be re-mounted. Not a big deal, but if it's some interesting Component - you might not want it.
+It happens because of react-reconciler (check it out, it's cool). Basically, it checks for hierarchy, and looks at position and element types.
+So in this case `<input />` was inside of `div` and on position `1` and switched to postion `0`. That means it will re-mount.
+Use conditional rendering in this case, since it will preserve postion
+
+```jsx
+const Component = ({ hasError, error }) => {
+  return (
+    <div>
+      {hasError && <span>{error}</span>}
+      <input />
+    </div>
+  );
+};
+```
+
+- Element's type is changed
+
+Similar to prev. step - type matters. If you construct component type dynamically - you might need to memoize it, or just use render-function
+
+```jsx
+const AppRoutes = () => {
+  const OurCoolRoute = () => {}; // Whatever
+  const OurCoolRoute = useCallback(() => {}, [deps]); // Whatever
+
+  return (
+    <Switch>
+      // Hello re-mount, my old friend
+      <Route component={OurCoolRoute} />
+      // Better, but will re-mount on deps change
+      <Route component={OurCoolRoute} />
+      // This works better
+      <Route render={() => <Cool />} />
+    </Switch>
+  );
+};
+```
+
+Key difference between `() => <Component />` and `<Component />` is the fact that function is called and `<Component />` = `React.createElement(Component)`. So render function can change as much as you want, but `Component` type stays the same, it just gets props. So nice to know it
+
+### Why it re-renders
+
+### Lists
+
+### Updates in parallel
