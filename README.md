@@ -207,4 +207,90 @@ So any change in the STATE in the Context must be translated.
 So this is exactly what happens.
 This is why we have so many context's in the first place - we sign-up for some specific information, rather than sign up for ALL and then try to opt. it
 
-But what we need to do sometimes - is to CHANGE context value outside of the component
+But what we need to do sometimes - is to CHANGE context value outside of the component.
+So you can't `useContext` there
+
+```jsx
+export const AppAuthProviderContext = React.createContext({});
+
+// dirty trick to use function out of context
+let handleLogout = () => {};
+
+const AppAuthProvider: React.FC<AppAuthProviderProps> = ({ children }) => {
+  const [value, setValue] = useState({ authState: "logged_in" });
+  // some code
+
+  const logout = () => {
+    // do something with context value
+    setValue(v => ({ ...v, authState: "logged_out" }));
+  };
+
+  handleLogout = logout;
+
+  // return Something
+};
+
+export { handleLogout };
+```
+
+Yes, you feel how wrong it is.
+But, at the same time it works. Have it in your app for something that is a "Singleton" and you will never have any problems with it.
+You can return an object with this function as a field. Or multiple functions at the same time
+
+```jsx
+export const AppAuthProviderContext = React.createContext({});
+
+export const loginApi = {};
+
+const AppAuthProvider: React.FC<AppAuthProviderProps> = ({ children }) => {
+  const [value, setValue] = useState({ authState: "logged_in" });
+
+  const logout = useCallaback(() => {
+    setValue(v => ({ ...v, authState: "logged_out" }));
+  }, []);
+
+  useEffect(() => {
+    loginApi.logout = logout;
+  }, [logout]);
+};
+
+export { handleLogout };
+```
+
+Just keep in mind order of calls and useEffects trigger. Just in case you want to tigger function that wasn't created yet.
+Use this for: Messages, Auth, you name it.
+
+Another way is - split values and api in two contexts
+
+```jsx
+export const AppAuthStateContext = React.createContext({});
+export const AppAuthApiContext = React.createContext({});
+
+const AppAuthProvider: React.FC<AppAuthProviderProps> = ({ children }) => {
+  const [value, setValue] = useState({ authState: "logged_in" });
+
+  const logout = useCallaback(() => {
+    setValue(v => ({ ...v, authState: "logged_out" }));
+  }, []);
+
+  const apiValue = useMemo(() => ({ logout }), [logout]);
+
+  return (
+    <AppAuthStateContext.Provider value={value}>
+      <AppAuthApiContext.Provider value={apiValue}>
+        {children}
+      </AppAuthApiContext.Provider>
+    </AppAuthStateContext.Provider>
+  );
+};
+
+export const useLoginApi = () => useContext(AppAuthApiContext);
+export const useLoginState = () => useContext(AppAuthStateContext);
+```
+
+This is generally better if you care about performance of your Logout button
+
+### Context as configuration
+
+You can have Two or more different context Providers for the same Context.
+I used this to have a way to configure Read-only mode for some of the Components.
