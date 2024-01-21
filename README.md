@@ -557,6 +557,8 @@ const ListTemplate = ({ items, batchSize = 50, ...eachItemProps }) => {
 };
 ```
 
+The issue here is that `batch` will re-create all batches if anything changes. So you need to do deep compare on the `Rows` component. So you need to provide second argument to the memo function that will check for props equality. https://react.dev/reference/react/memo#specifying-a-custom-comparison-function
+
 ### Updates in parallel
 
 ## CSS
