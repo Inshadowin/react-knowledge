@@ -12,7 +12,7 @@ Z-index is a crutch. We can use something like react-popper, or just use other p
 
 So you will add class for that. And so on, and so on
 
-Sollution
+Solution
 
 ```jsx
 import { useState, useEffect } from "react";
@@ -421,7 +421,27 @@ Key difference between `() => <Component />` and `<Component />` is the fact tha
 
 ### Why it re-renders
 
+Because it can. The base idea of React is not reactive at all. When something changes in the parent component -> all children (and their children, and children's children, etc.) render until the very last one. Main reasons for render are:
+
+- Change of the local state
+  - Change of the context (which is same idea as change of local state. with some diff to it, but still)
+- Change of the prop's
+- Render of the parent
+
+With first case we can't do anything. It changes - we must React. You must be doing something wrong (like mutating the state) if it doesn't.
+
+Next two points are more interesting. You can counter them by using React.memo(i'll tell more about it later). It will allow you to skip unnecessary renders if all of the props stay THE SAME. So you should remember that `[] !== []` and `{} !== {}`, etc. But what you didn't know was that `<Component /> !== <Component />`. Yeah, if your component accepts `children` you midht never get `React.memo` value out of it. More examples later on, but general idea is this. Only way to prevent extra renders - is using `React.memo` and hooks like `useCallback` and `useMemo`.
+
+This is a stab at idea of `lifting the state` as that's not usually the answer and the idea itself is more applied to the `stateless`/`statefull` templates, rather than fixing your optimization issues
+
 ### Lists
+
+React just can't work with lists. No, it can't, they lied to you. It can work with 30-40 items in the list, sure. Now let's work with 10_000 items - and you page will suffer more than Sisyphus. Yes, it was virtualized in terms of the DOM, page still is dead as a hammer. I'll show you the only viable solution yet for working with the lists. There might be more, depends on how you construct components, but generally it must have all of these:
+
+- Virtualized render with optimized container state
+- Wrappers for each of list items that are memoized and know when to render
+- Unique identifiers for list (not an index)
+- Batching components for your list
 
 ### Updates in parallel
 
@@ -429,4 +449,4 @@ Key difference between `() => <Component />` and `<Component />` is the fact tha
 
 ## When you need imperative
 
-## 
+## Memo
