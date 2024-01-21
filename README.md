@@ -445,6 +445,44 @@ React just can't work with lists. No, it can't, they lied to you. It can work wi
 
 All this is useless if each item has some logic that depends on other items. Or you are able to LIFT that logic to the list component itself
 
+#### Virtualized
+
+You can try to use something from npm's. And there are some good options, but we share knowledge here. So if YOU had to implement it, what would you do?
+
+- Create a Provider. It must work with DOM-Node and must provide DOMRect for that Node
+
+```jsx
+const VirtualProvider = ({ nodeCss, children }) => {
+  const node = useNode(nodeCss);
+  const nodeDomRect = useNodeDomRect(node);
+
+  return <Virtual.Provider value={nodeDomRect}>{children}</Virtual.Provider>;
+};
+```
+
+`useNodeDomRect` is up to you, this must measure the position of the scroll element for your list.
+
+Also you need `VirtualElement` of some sort
+
+```jsx
+const VirtualElement = ({
+  children,
+  as: As = "div",
+  placeholder = <Skeleton />,
+}) => {
+  const ref = useRef(null);
+
+  const nodeDomRect = useUodeDomRect(); // From the provider
+  const isInViewPort = useIsInViewPort(ref, nodeDomRect); // Some geometry math
+
+  return <As ref={ref}>{isInViewPort ? children : placeholder}</As>;
+};
+```
+
+Yes, you can use Intersection Observer API. But, you'd have to add it to every item. And why would you have 10_000 Intersection Observers on your page? Why are you doing it, mister Anderson?
+
+This example is just a raw idea, not an implementation. It shows you, that measurements and events must be reduced to a minimum. And calculations must be simple and fast. Also placeholder has to be of the same height as an actual item.
+
 #### Wrappers
 
 ItemApi must be fixed, and not depend on list items or anything else. These functions are const through all lifecycle of component. That's why this item will only change if item or itemKey changes
@@ -473,6 +511,10 @@ const ListItem = React.memo(
   }
 );
 ```
+
+#### Unique identifiers
+
+Make sure that list has some ID's. NEver use Index, it's just wrong. So ensure it at the time of validation of data, make user to specify them. Provide a way to use `keyof T` as a way to use some field as a key.
 
 #### Batching
 
