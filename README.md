@@ -443,6 +443,78 @@ React just can't work with lists. No, it can't, they lied to you. It can work wi
 - Unique identifiers for list (not an index)
 - Batching components for your list
 
+All this is useless if each item has some logic that depends on other items. Or you are able to LIFT that logic to the list component itself
+
+#### Wrappers
+
+ItemApi must be fixed, and not depend on list items or anything else. These functions are const through all lifecycle of component. That's why this item will only change if item or itemKey changes
+
+```jsx
+const ListItem = React.memo(
+  ({ item, itemKey, updateItem, renderItem, ...restOfItemApi }) => {
+    // you can make something more fancy than this.
+    // updateItem might support predicate
+    // it's your list API, not mine
+    const handleUpdateItem = useCallback(
+      newItem => updateItem(newItem, itemKey),
+      [updateItem, itemKey]
+    );
+
+    // you get the idea
+    // just like handleUpdateItem you change general function to specific for this itemKey
+    const otherApiWraps = {};
+
+    return renderItem({
+      item,
+      itemKey,
+      updateItem: handleUpdateItem,
+      ...otherApiWraps,
+    });
+  }
+);
+```
+
+#### Batching
+
+You can use your existing component for List Render. And use that as a part of new BatchRender.
+
+Key points:
+
+- item has some sort of key
+- no transformations here, just passing props inside of ListItem
+- no extra DOM elements, no presentation here
+
+```jsx
+// Component that renders a batch of rows
+const Rows = React.memo(({ items, ...eachItemProps }) => {
+  return (
+    <>
+      {items.map(item => (
+        <ListItem
+          {...eachItemProps}
+          item={item}
+          key={item.key}
+          key={item.itemKey}
+        />
+      ))}
+    </>
+  );
+});
+
+// Component that creates batches
+const ListTemplate = ({ items, batchSize = 50, ...eachItemProps }) => {
+  const batches = useMemo(() => batch(items, batchSize), [items, batchSize]);
+
+  return (
+    <>
+      {batches.map(batch => (
+        <Rows {...eachItemProps} key={batch.key} items={batch} />
+      ))}
+    </>
+  );
+};
+```
+
 ### Updates in parallel
 
 ## CSS
