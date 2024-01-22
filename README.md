@@ -557,7 +557,7 @@ const ListTemplate = ({ items, batchSize = 50, ...eachItemProps }) => {
 };
 ```
 
-The issue here is that `batch` will re-create all batches if anything changes. So you most likely you need to create a way to track changes and know what batch was affected. Not an easy task if you have dynamic items. If you don't and this is just a display - don't bother
+The issue here is that `batch` will re-create all batches if anything changes. So you most likely you need to create a way to track changes and know what batch was affected. Not an easy task if you have dynamic items. If you don't and this is just a display - don't bother. You can find example for such useBatch here. You can optimize it more, but I've made code readable so you get the idea there
 
 ### Updates in parallel
 
