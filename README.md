@@ -2,6 +2,8 @@
 
 Repo with a set of ideas and patterns to use
 
+It will be useful to people that have good knowledge of React and want to see some interesting use-cases. It's not a documentation 2.0, go read it on React website :)
+
 # Contents
 
 This will have anyting: starting from code exapmles, and ending with general ideas on projects
