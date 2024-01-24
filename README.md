@@ -561,10 +561,43 @@ const ListTemplate = ({ items, batchSize = 50, ...eachItemProps }) => {
 
 The issue here is that `batch` will re-create all batches if anything changes. So you most likely you need to create a way to track changes and know what batch was affected. Not an easy task if you have dynamic items. If you don't and this is just a display - don't bother. You can find example for such useBatch here. You can optimize it more, but I've made code readable so you get the idea there
 
+Note that most likely it will be an overkill, and re-batching will be slower than actually running all of the items memoized render. I'll get some benchmarks, but again it depends on what type of list you need
+
+## Memo
+
+`React.memo` - best tool for optimizing your app. Yes, you can wrap all components in it. No, it's not the same as memoizing funcion, since React already has prev. result and prev. props saved. Yes, if you don't use .defaultProps and custom compare function it will only do a fast compare (they have enum for different types of components. This one is called SimpleMemoComponent)
+
+Just imagine your app with not a single component wrapped in `React.memo`. You toggled sidebar - and EVERY component will get re-rendered. But at least you didn't use `React.memo`, you're so cool
+
+So yeah, you don't really need every component wrapped like that, but if you will - you will never regret it. Of course, if people will write something like this
+
+```jsx
+return <Component array={[]} onClick={() => {}} object={{}} />;
+```
+
+you will have 0 effect. So don't write like this, memoize functions and objects when needed. And please, stop doing this
+
+```jsx
+const Component = ({ prop1 = [], prop2 = {} }) => {
+  // do something
+  return <Component1 prop1={prop1} prop2={prop2} />;
+};
+```
+
+These defaults if not set properly will be re-created every time. If they are here to prevent errors - make changes in other places. Somebody can just pass `null`, write safe code. But if you want to have some defaults, do this:
+
+```jsx
+const defaultProp1 = [];
+const defaultProp2 = {};
+
+const Component = ({ prop1 = defaultProp1, prop2 = defaultProp2 }) => {
+  // do something
+  return <Component1 prop1={prop1} prop2={prop2} />;
+};
+```
+
 ### Updates in parallel
 
 ## CSS
 
 ## When you need imperative
-
-## Memo
